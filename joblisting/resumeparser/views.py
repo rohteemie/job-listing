@@ -1,20 +1,33 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+from .forms import ResumeUploadForm
+from .utils import extract_info_from_pdf
+
 
 # Create your views here.
 def upload_resume(request):
-    # return render(request, 'upload.html')
     if request.method == 'POST':
-        uploaded_file = request.FILES['resume']
-        # For now, I will just return a dummy JSON response
-        # return JsonResponse({'message': 'File uploaded successfully'})
+        form = ResumeUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            uploaded_file = request.FILES['resume']
 
-        extracted_info = extract_info_from_pdf(uploaded_file)
-        print("Extracted info:", extracted_info)  # <-- Add this for debugging
+            # Check if the uploaded file is a valid PDF
+            if uploaded_file.content_type != 'application/pdf':
+                return JsonResponse({'error': 'Invalid file type. Please upload a PDF.'}, status=400)
 
-        return JsonResponse(extracted_info)
+            if uploaded_file.size > 5 * 1024 * 1024:  # Limit file size to 5MB
+                return JsonResponse({'error': 'File too large. Please upload a file smaller than 5MB.'}, status=400)
 
-    return render(request, 'upload.html')
+            try:
+                extracted_info = extract_info_from_pdf(uploaded_file)
+                return JsonResponse(extracted_info)
+            except Exception as e:
+                return JsonResponse({'error': 'Failed to process PDF file.'}, status=500)
+        else:
+            return JsonResponse({'error': 'Invalid form data.'}, status=400)
+
+    form = ResumeUploadForm()
+    return render(request, 'upload.html', {'form': form})
 
 
 import re
