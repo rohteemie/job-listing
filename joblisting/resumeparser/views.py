@@ -21,19 +21,28 @@ import re
 import fitz  # PyMuPDF
 
 def extract_info_from_pdf(pdf_file):
-    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")  # Read PDF
+    """Extracts information like email, phone number, and raw text from a PDF resume."""
+    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     text = ""
-    for page in doc:  # Extraction of text from each page
+    for page in doc:
         text += page.get_text()
 
-    # Use regex to find specific information
-    email = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
-    phone = re.search(r'\+?\d[\d -]{8,}\d', text)  # A simple regex for phone numbers
-    # For future updates, I will add other extractions like age, profession, etc.
+    # Extract email using regex
+    email_match = re.search(r'[\w\.-]+@[\w\.-]+', text)
+    email = email_match.group(0) if email_match else None
 
-    # Return extracted data as a dictionary
+    # Extract phone number using regex
+    phone_match = re.search(r'\+?\d[\d -]{8,}\d', text)
+    phone = phone_match.group(0) if phone_match else None
+
+    # Check for missing info and return an appropriate response
+    if not email:
+        email = "Email not found"
+    if not phone:
+        phone = "Phone number not found"
+
     return {
-        'email': email.group(0) if email else None,
-        'phone': phone.group(0) if phone else None,
-        'raw_text': text[:500]  # Optionally include a preview of the resume text
+        'email': email,
+        'phone': phone,
+        'raw_text': text
     }
