@@ -9,7 +9,7 @@ def upload_resume(request):
     if request.method == 'POST':
         form = ResumeUploadForm(request.POST, request.FILES)
         if form.is_valid():
-            uploaded_file = request.FILES['resume']
+            uploaded_file = form.cleaned_data['resume']
 
             # Check if the uploaded file is a valid PDF
             if uploaded_file.content_type != 'application/pdf':
@@ -24,10 +24,13 @@ def upload_resume(request):
             except Exception as e:
                 return JsonResponse({'error': 'Failed to process PDF file.'}, status=500)
         else:
-            return JsonResponse({'error': 'Invalid form data.'}, status=400)
+            # Extract only the first error message without the field name
+            error_message = list(form.errors.values())[0][0]
+            return JsonResponse({'error': error_message}, status=400)
 
     form = ResumeUploadForm()
     return render(request, 'upload.html', {'form': form})
+
 
 
 import re

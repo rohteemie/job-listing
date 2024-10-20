@@ -1,0 +1,10 @@
+let us start that please, and i would also like you to take note of all of this below too.
+
+1. the app should scrape for jobs that matches the data extracted from the resume, for example the data like individual job title, experience or year, tools familiar with or able to use, email address and the contact from the resume..
+
+2. links of job that matches this data extracted from the pdf should be sent to the email and
+of the uploader/email on the resume.
+
+
+
+
