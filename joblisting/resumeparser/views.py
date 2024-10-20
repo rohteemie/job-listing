@@ -1,39 +1,61 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+from .forms import ResumeUploadForm
+from .utils import extract_info_from_pdf
+
 
 # Create your views here.
 def upload_resume(request):
-    # return render(request, 'upload.html')
     if request.method == 'POST':
-        uploaded_file = request.FILES['resume']
-        # For now, I will just return a dummy JSON response
-        # return JsonResponse({'message': 'File uploaded successfully'})
+        form = ResumeUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            uploaded_file = request.FILES['resume']
 
-        extracted_info = extract_info_from_pdf(uploaded_file)
-        print("Extracted info:", extracted_info)  # <-- Add this for debugging
+            # Check if the uploaded file is a valid PDF
+            if uploaded_file.content_type != 'application/pdf':
+                return JsonResponse({'error': 'Invalid file type. Please upload a PDF.'}, status=400)
 
-        return JsonResponse(extracted_info)
+            if uploaded_file.size > 5 * 1024 * 1024:  # Limit file size to 5MB
+                return JsonResponse({'error': 'File too large. Please upload a file smaller than 5MB.'}, status=400)
 
-    return render(request, 'upload.html')
+            try:
+                extracted_info = extract_info_from_pdf(uploaded_file)
+                return JsonResponse(extracted_info)
+            except Exception as e:
+                return JsonResponse({'error': 'Failed to process PDF file.'}, status=500)
+        else:
+            return JsonResponse({'error': 'Invalid form data.'}, status=400)
+
+    form = ResumeUploadForm()
+    return render(request, 'upload.html', {'form': form})
 
 
 import re
 import fitz  # PyMuPDF
 
 def extract_info_from_pdf(pdf_file):
-    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")  # Read PDF
+    """Extracts information like email, phone number, and raw text from a PDF resume."""
+    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     text = ""
-    for page in doc:  # Extraction of text from each page
+    for page in doc:
         text += page.get_text()
 
-    # Use regex to find specific information
-    email = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
-    phone = re.search(r'\+?\d[\d -]{8,}\d', text)  # A simple regex for phone numbers
-    # For future updates, I will add other extractions like age, profession, etc.
+    # Extract email using regex
+    email_match = re.search(r'[\w\.-]+@[\w\.-]+', text)
+    email = email_match.group(0) if email_match else None
 
-    # Return extracted data as a dictionary
+    # Extract phone number using regex
+    phone_match = re.search(r'\+?\d[\d -]{8,}\d', text)
+    phone = phone_match.group(0) if phone_match else None
+
+    # Check for missing info and return an appropriate response
+    if not email:
+        email = "Email not found"
+    if not phone:
+        phone = "Phone number not found"
+
     return {
-        'email': email.group(0) if email else None,
-        'phone': phone.group(0) if phone else None,
-        'raw_text': text[:500]  # Optionally include a preview of the resume text
+        'email': email,
+        'phone': phone,
+        'raw_text': text
     }
